@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 // const dark_toggle = document.querySelector(".toggle-dark");
 // dark_toggle.addEventListener("click", (e) => {
 //   e.preventDefault();
@@ -28,6 +28,15 @@ function App() {
       wind_degree: "",
     },
   });
+  const [history, setHistory] = useState(
+    [{ name: "Ethiopia", date: new Date().toISOString(), temp: 22 }]
+    // function () {
+    //   const storedHistory = localStorage.getItem("searchedHistory");
+    //   return JSON.parse(storedHistory);
+    // }
+  );
+  const inputEl = useRef(null);
+  console.log(inputEl.current);
   function handleSetLight() {
     setLight((prevLight) => !prevLight);
   }
@@ -40,7 +49,19 @@ function App() {
   function handleInputBlur() {
     setInputActiveStatus(false);
   }
-
+  useEffect(function () {
+    const callback = (e) => {
+      if (e.code === "Space") {
+        document.activeElement === inputEl.current
+          ? inputEl.current.blur()
+          : inputEl.current.focus();
+      }
+    };
+    document.addEventListener("keydown", callback);
+    return function () {
+      document.removeEventListener("keydown", callback);
+    };
+  }, []);
   useEffect(
     function () {
       async function fetchWeather() {
@@ -61,6 +82,14 @@ function App() {
           }
           const result = await response.json();
           setWeatherData(result);
+          setHistory((prevSearched) => [
+            prevSearched ? { ...prevSearched } : "",
+            {
+              name: result?.location.name,
+              date: new Date().toISOString(),
+              temp: result?.current.temp_c,
+            },
+          ]);
         } catch (error) {
           console.error(error);
         }
@@ -68,23 +97,24 @@ function App() {
       enter && fetchWeather();
       return function () {
         setEnter(false);
+        setSearchedCountry("");
+        localStorage.setItem("searchedHistory", JSON.stringify(history));
       };
     },
-    [enter, searchedCountry]
+    [enter]
   );
   useEffect(
     function () {
       function callback(e) {
         if (inputActiveStatus && e.code === "Enter") {
           setEnter(true);
-          handleInputBlur();
+          // handleInputBlur();
         }
       }
       document.addEventListener("keydown", callback);
 
       return function () {
         document.removeEventListener("keydown", callback);
-        setSearchedCountry("");
       };
     },
     [inputActiveStatus]
@@ -114,11 +144,12 @@ function App() {
       wind_degree,
     },
   } = weatherData;
+
   return (
     <div className={light ? "" : "dark"}>
       <div className={`p-[30px]  dark:bg-gray-900 dark:text-white px-11  `}>
         <nav className="flex h-[40px] justify-between items-center mt-9 px-[40px] ">
-          <h2 className=" p-2 nav-el dark:text-white  dark:bg-slate-600">
+          <h2 className=" p-2 nav-el dark:text-white  dark:bg-slate-600 font-Roboto font-700">
             weatherIt
           </h2>
 
@@ -130,6 +161,7 @@ function App() {
             onChange={handleSearchCountry}
             onFocus={handleInputActive}
             onBlur={handleInputBlur}
+            ref={inputEl}
           />
 
           <div className="nav-el p-2 dark:bg-slate-600">
@@ -288,8 +320,13 @@ function App() {
             <p>Sunset</p>
             <p>10: 33</p>
           </div> */}
-            <div className="row-start-1 col-start-4 row-span-3 bg-slate-300 flex dark:bg-slate-700 items-center justify-center rounded-xl mx-2">
-              8
+            <div className="row-start-1 col-start-4 row-span-3 bg-slate-300 flex-col dark:bg-slate-700 justify-center  rounded-xl mx-2">
+              <h3 className=" bg-slate-400 font-mono text-xl text-center p-2 mx-6 m-4 rounded-lg">
+                History
+              </h3>
+              {history?.map((his, i) => (
+                <Browsed data={his} key={i} />
+              ))}
             </div>
           </div>
         </main>
@@ -302,6 +339,22 @@ function WeatherItem({ property, amount }) {
     <div className="dark:bg-slate-700 bg-slate-300 flex items-center justify-center rounded-xl border-slate-700 flex-col m-2">
       <p>{property}</p>
       <p>{amount}</p>
+    </div>
+  );
+}
+function Browsed({ data }) {
+  console.log(data);
+  function removeHandler() {}
+  return (
+    <div className="bg-slate-50 rounded-xl dark:bg-slate-800 w-[250px] m-5 flex justify-between ">
+      <div className=" flex-col justify-center self-center ">
+        <p className="text-sm text-center">{data?.name}</p>
+        <p className="text-sm text-center">{data?.date}</p>
+        <p className="text-sm text-center">{data?.temp}</p>
+      </div>
+      <button onClick={removeHandler} className="pr-5">
+        X
+      </button>
     </div>
   );
 }
